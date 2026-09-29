@@ -1,0 +1,21 @@
+# Raw downloads — large, reproducible from the documented Kaggle/source URLs in Submission.md
+Airline Delay and Cancellation Data.zip
+data/raw/DelayedFlights.csv
+data/raw/st99_d00.*
+_archive_ride_hailing/data/raw/ncr_ride_bookings.csv
+_archive_ride_hailing/*.zip
+
+# Original Kaggle dataset author's own Power BI file / dashboard image — not our work, not for redistribution
+_archive_ride_hailing/data/raw/Uber.pbix
+_archive_ride_hailing/data/raw/Dasboard.gif
+
+# Regeneratable exports (rebuild via sqlcmd export commands documented in the project)
+tableau/data/*.csv
+
+# Python build artifacts
+**/__pycache__/
+*.pyc
+
+# OS / editor
+.DS_Store
+.claude/

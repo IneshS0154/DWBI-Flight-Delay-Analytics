@@ -1,0 +1,8 @@
+VehicleType,VehicleCategory,SeatingCapacity,FuelType
+Auto,Three-Wheeler,3,CNG
+Bike,Two-Wheeler,1,Petrol
+eBike,Two-Wheeler,1,Electric
+Go Mini,Economy Car,4,Petrol
+Go Sedan,Economy Car,4,Petrol
+Premier Sedan,Premium Car,4,Petrol
+Uber XL,Premium Car,6,Diesel

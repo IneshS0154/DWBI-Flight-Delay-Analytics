@@ -32,13 +32,45 @@ It captures every scheduled domestic flight — its scheduled and actual departu
 the airline and route flown, whether it was delayed, cancelled or diverted, and (for delayed
 flights) how many minutes of the delay are attributable to each of five standard causes.
 
-**Business problem addressed:** An airline or airport authority cannot easily tell, from raw
+**Business owner / context:** this solution is built for an **Airline Operations Management**
+function — the internal team at a carrier responsible for schedule reliability, resource
+allocation, and disruption management. (An airport authority would frame the same delay data
+around a different question — airport-level congestion management rather than a carrier's own
+schedule design — so this project commits to the airline-operations framing throughout, rather
+than treating the two as interchangeable.)
+
+**Business problem addressed:** Airline operations management cannot easily tell, from raw
 flight-level records alone, where its delay problem actually comes from: is a given route
 chronically late because of the carrier's own scheduling, the destination airport's congestion
 (NAS delay), the weather, or a knock-on effect from a late-arriving aircraft? These questions
 require slicing millions of flight records simultaneously by carrier, route, airport, season and
 external weather conditions — exactly the multi-dimensional analysis an OLTP-style reporting feed
 is not built to answer directly, and exactly what a dimensional data warehouse and BI layer solve.
+
+**Key stakeholders:**
+
+| Stakeholder | Interest |
+|---|---|
+| Airline Operations Managers | Overall on-time performance and delay trends |
+| Flight Scheduling Teams | Identifying problematic time periods, routes and airports to redesign schedules around |
+| Airport Operations Teams | Airport-level congestion and operational delay patterns |
+| Network Planning Teams | Route and airport performance for future network decisions |
+| Management/Executives | High-level KPIs and operational trend summaries |
+
+**Core KPIs monitored by this solution:**
+1. On-Time Performance (%)
+2. Average Arrival Delay (minutes)
+3. Average Departure Delay (minutes)
+4. Total Delay Minutes, and its breakdown by the 5 BTS delay causes
+5. Cancellation Rate (%) and Diversion Rate (%)
+
+**Key business questions this project answers** (these map directly to Task 7's dashboard and
+Task 8's insights):
+1. Which carriers have the highest/lowest on-time performance?
+2. Which airports experience the greatest delays?
+3. What are the major causes of flight delays?
+4. How do delays vary by month, season and scheduled departure time?
+5. What relationship exists between weather conditions and flight delays?
 
 **Dataset source:**
 - **Primary:** Kaggle, [Airline Delay and Cancellation Data](https://www.kaggle.com/datasets/giovamata/airlinedelaycauses)
@@ -92,6 +124,30 @@ sampling), ~248 MB uncompressed (original).
 | Multiple attributes suitable for dimensional analysis | 29 source attributes map naturally to carrier, route/airport, date and delay-cause dimensions |
 | Supports fact and dimension table creation | Clear measures (delay minutes by cause, distance, taxi/air time) at a well-defined grain (one row per flight) |
 | Represents a realistic business scenario | Airline on-time performance is a genuine, well-understood operational problem with real decisions (scheduling, resourcing, weather contingency) that BI dashboards can meaningfully support |
+
+### Limitations
+
+Stated explicitly here so Task 8's conclusions are read against the right scope, not
+over-generalised:
+
+- **Historical scope:** the analysis is based on US domestic flight data from **2008**. Findings
+  describe historical operational patterns within that year and should not be read as evidence of
+  current airline performance.
+- **Sampling:** the warehouse holds a stratified random sample of 200,000 flights out of the
+  original 1,936,758 (≈10.3%). Monthly representation was preserved (see Task 1's sampling
+  method), but conclusions are findings *from this sample*, not a claim about the complete
+  1.94M-flight population.
+- **Airport scope:** `DimAirport` holds the 304 airports actually referenced by the flight
+  sample, not OpenFlights' full 7,698-airport catalogue (see Task 4, Design assumptions) — a
+  deliberate scoping decision, not missing data.
+- **Weather is a relationship, not a proven cause:** the data supports statements like "flights on
+  higher-precipitation days show lower on-time performance," not "weather caused these delays" —
+  other factors (airport congestion, late-aircraft cascades, carrier scheduling) are also present
+  and are not fully separated out by a simple weather comparison.
+- **Cancellations are too rare in this sample to be a primary conclusion:** only 57 of 200,000
+  flights were cancelled for carrier/weather/NAS reasons combined (see Task 5 validation results).
+  Cancellation rate is retained as a KPI, but the project's main analytical weight sits on delay
+  and on-time performance, where the sample size is meaningful.
 
 ---
 
@@ -701,18 +757,21 @@ factor like weather.
 turnaround chains, spare aircraft at high-traffic hubs) rather than assuming weather mitigation
 alone will fix on-time performance — the data shows weather is a comparatively small direct cause.
 
-### 2. Weather's true impact is bigger than its official 5.9% delay-cause share suggests
+### 2. Poor weather is associated with materially worse performance than the official 5.9% delay-cause share suggests
 
 Comparing flights by same-day origin precipitation: on **rainy/snow days**, average arrival delay
 is **50.2 minutes** vs **35.2 minutes on dry days** (a 43% increase), on-time rate drops from
 **42.1% to 30.9%**, and the cancellation rate more than doubles (0.016% → 0.041%). Weather is only
-officially coded as the delay *cause* 5.9% of the time, but it clearly triggers knock-on Late
-Aircraft and NAS delays that get attributed to those categories instead.
+officially coded as the delay *cause* 5.9% of the time — this comparison shows a clear
+*relationship* between poor weather and worse outcomes, though the official cause breakdown
+suggests part of that relationship is likely mediated through knock-on Late Aircraft and NAS
+delays rather than weather being coded as the direct cause. This is a correlational finding, not
+a controlled causal test — other factors (season, route mix) are not held constant here.
 
 **Recommendation:** weather-contingency planning (proactive rebooking, buffer scheduling on
-forecast-bad-weather days) should be sized against this larger *indirect* impact, not just the
-narrow "Weather" cause-code figure — relying on the official cause breakdown alone understates the
-business case for weather mitigation investment.
+forecast-bad-weather days) should be sized against this broader *relationship*, not just the
+narrow "Weather" cause-code figure — relying on the official cause breakdown alone likely
+understates the business case for weather mitigation investment.
 
 ### 3. Carrier performance varies substantially — some carriers need scheduling review
 

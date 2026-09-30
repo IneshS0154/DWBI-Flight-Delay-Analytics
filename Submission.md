@@ -47,6 +47,10 @@ require slicing millions of flight records simultaneously by carrier, route, air
 external weather conditions — exactly the multi-dimensional analysis an OLTP-style reporting feed
 is not built to answer directly, and exactly what a dimensional data warehouse and BI layer solve.
 
+> **In one sentence:** this project doesn't just analyse flight delays — it analyses flight delays
+> **so that** airline operations managers, scheduling teams and network planners can make better
+> scheduling, resource-allocation and disruption-management decisions.
+
 **Key stakeholders:**
 
 | Stakeholder | Interest |
@@ -57,12 +61,17 @@ is not built to answer directly, and exactly what a dimensional data warehouse a
 | Network Planning Teams | Route and airport performance for future network decisions |
 | Management/Executives | High-level KPIs and operational trend summaries |
 
-**Core KPIs monitored by this solution:**
-1. On-Time Performance (%)
-2. Average Arrival Delay (minutes)
-3. Average Departure Delay (minutes)
-4. Total Delay Minutes, and its breakdown by the 5 BTS delay causes
-5. Cancellation Rate (%) and Diversion Rate (%)
+**Core KPIs monitored by this solution** (each maps directly to a Power BI measure built in Task 7):
+1. On-Time Performance (%) — `Overall On-Time Rate`
+2. Average Arrival Delay (minutes) — `Avg Arrival Delay`
+3. Average Departure Delay (minutes) — `Avg Departure Delay`
+4. Total Delay Minutes (all causes combined)
+5. Weather-Related Delay Minutes — `Avg Weather Delay`
+6. National Air System (NAS) Delay Minutes — `Avg NAS Delay`
+7. Carrier Delay Minutes — `Avg Carrier Delay`
+8. Late Aircraft Delay Minutes — `Avg Late Aircraft Delay`
+9. Cancellation Rate (%) — `Cancellation Rate %`
+10. Diversion Rate (%) — `Diversion Rate %`
 
 **Key business questions this project answers** (these map directly to Task 7's dashboard and
 Task 8's insights):
@@ -661,6 +670,18 @@ Avg NAS Delay = DIVIDE(
     SUMX('mart vw_DailyCarrierAirportPerformance', [AvgNASDelayMinutes] * [FlightCount]),
     SUM('mart vw_DailyCarrierAirportPerformance'[FlightCount]))
 
+Avg Weather Delay = DIVIDE(
+    SUMX('mart vw_DailyCarrierAirportPerformance', [AvgWeatherDelayMinutes] * [FlightCount]),
+    SUM('mart vw_DailyCarrierAirportPerformance'[FlightCount]))
+
+Avg Carrier Delay = DIVIDE(
+    SUMX('mart vw_DailyCarrierAirportPerformance', [AvgCarrierDelayMinutes] * [FlightCount]),
+    SUM('mart vw_DailyCarrierAirportPerformance'[FlightCount]))
+
+Avg Late Aircraft Delay = DIVIDE(
+    SUMX('mart vw_DailyCarrierAirportPerformance', [AvgLateAircraftDelayMinutes] * [FlightCount]),
+    SUM('mart vw_DailyCarrierAirportPerformance'[FlightCount]))
+
 Cancellation Rate % = DIVIDE([Total Cancelled], [Total Flights]) * 100
 Diversion Rate % = DIVIDE([Total Diverted], [Total Flights]) * 100
 ```
@@ -678,9 +699,10 @@ would treat a low-volume day the same as a high-volume one.
 `Avg Departure Delay`, `Total Cancelled`, `Cancellation Rate %`, `Total Diverted`,
 `Diversion Rate %`.
 
-**1 Donut chart:** the five `Avg*DelayMinutes` cause measures (Carrier/Weather/NAS/
-Security/LateAircraft, all Average aggregation) — gives the delay-cause split (Insight 1) a
-permanent home on the summary page rather than requiring a drill into Page 2.
+**1 Donut chart:** the four named cause measures — `Avg Carrier Delay`, `Avg Weather Delay`,
+`Avg NAS Delay`, `Avg Late Aircraft Delay` (Security delay is negligible in this dataset — see
+Task 5 validation figures — and is omitted from the chart for readability) — gives the delay-cause
+split (Insight 1) a permanent home on the summary page rather than requiring a drill into Page 2.
 
 ### Report Page 2: Trend Analysis
 - [x] Time-based analysis

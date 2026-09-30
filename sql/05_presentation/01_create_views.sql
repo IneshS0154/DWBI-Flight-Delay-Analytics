@@ -1,6 +1,6 @@
 /* ============================================================
-   Presentation-layer views for Tableau (Task 7).
-   Flattened, human-readable, one row per grain — Tableau connects
+   Presentation-layer views for Power BI (Task 7).
+   Flattened, human-readable, one row per grain — Power BI connects
    to these directly instead of navigating the star schema's
    surrogate keys and joins itself.
    ============================================================ */

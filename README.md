@@ -11,8 +11,8 @@ The full task-by-task report is in **[Submission.md](Submission.md)**.
 
 ## Business scenario
 
-Analysing US domestic flight delays to answer operational questions an airline or airport
-operator actually needs answered: which delay causes dominate, how much weather really costs in
+Analysing US domestic flight delays to answer operational questions an airline
+operations management team actually needs answered: which delay causes dominate, how much weather really costs in
 delay minutes, which carriers/airports underperform, and how delay varies by season and time of
 day. See [Submission.md](Submission.md#task-1-dataset-selection-and-business-scenario-identification-10-marks)
 for the full write-up.
@@ -50,7 +50,7 @@ Full schema diagram, table descriptions, keys and design assumptions: [Submissio
 
 ## Tech stack
 
-- **Database**: Microsoft SQL Server (Azure SQL Edge, via Docker — see below)
+- **Database**: Microsoft SQL Server (local install on Windows, or Docker on macOS/Linux — see below)
 - **ETL**: T-SQL only (no external ETL tool)
 - **BI**: Power BI Desktop, connected live to the warehouse
 - **Source prep**: Python (only used to build/fetch the two reference sources in `data/sources/`, not for the ETL itself)

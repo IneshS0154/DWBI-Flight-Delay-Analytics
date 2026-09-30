@@ -1,8 +1,9 @@
 # IT3101 — Design and Implementation of a Data Warehouse and Business Intelligence Solution
 
-**Business scenario:** Airline flight on-time performance and delay analysis (US domestic flights, 2008)
+**Business scenario:** Airline Operations Performance and Flight Delay Analysis System — for an
+airline operations management function (US domestic flights, 2008)
 **Primary dataset:** [Airline Delay and Cancellation Data](https://www.kaggle.com/datasets/giovamata/airlinedelaycauses) (Kaggle, US DOT/BTS source), sampled to 200,000 records
-**Stack:** Microsoft SQL Server (Azure SQL Edge, Docker) · T-SQL ETL · Tableau
+**Stack:** Microsoft SQL Server · T-SQL ETL · Power BI Desktop
 
 > This document is the master report. Each task section below states, verbatim from the
 > assignment brief, what must be documented — then provides that content. Sections not yet
@@ -51,13 +52,23 @@ is not built to answer directly, and exactly what a dimensional data warehouse a
 > **so that** airline operations managers, scheduling teams and network planners can make better
 > scheduling, resource-allocation and disruption-management decisions.
 
+**Business problems and the decisions this solution supports:**
+
+| Business problem | Decision supported | Answered by |
+|---|---|---|
+| High arrival/departure delays across the network | Adjust schedule buffer (block) times and aircraft-rotation slack | Insights 1, 4 |
+| High NAS (air-system congestion) delay at certain airports | Plan operations around congested airports; target hub-specific process reviews | Insight 6 |
+| Delays associated with poor weather | Size weather-contingency plans (buffer scheduling, proactive rebooking) | Insight 2 |
+| Certain carriers consistently underperform | Prioritise which carrier operations get a scheduling/utilisation audit | Insight 3 |
+| Seasonal and time-of-day delay patterns | Plan staffing, de-icing/ground resources and schedule design by month and time of day | Insights 4, 5 |
+
 **Key stakeholders:**
 
 | Stakeholder | Interest |
 |---|---|
 | Airline Operations Managers | Overall on-time performance and delay trends |
 | Flight Scheduling Teams | Identifying problematic time periods, routes and airports to redesign schedules around |
-| Airport Operations Teams | Airport-level congestion and operational delay patterns |
+| Airport (Station/Hub) Operations Teams | The airline's own ground operations at each airport — airport-level congestion and operational delay patterns |
 | Network Planning Teams | Route and airport performance for future network decisions |
 | Management/Executives | High-level KPIs and operational trend summaries |
 
@@ -267,7 +278,7 @@ flowchart TB
     subgraph L4["Presentation Layer"]
         direction LR
         O["OLAP Analysis"]
-        BI["Tableau Dashboards"]
+        BI["Power BI Dashboards"]
         IN["Business Insights\n& Reports"]
     end
 
@@ -285,14 +296,17 @@ flowchart TB
   API (JSON over HTTP). Each has a different format and access method, which is exactly why an
   integration layer is needed rather than querying them directly.
 - **Data Integration Layer (ETL).** Implemented entirely in T-SQL (`sql/` folder). *Extract* bulk-
-  loads each raw source into its own staging table unmodified. *Transform* applies cleansing, type
-  casting, and derives new attributes (e.g. delay-cause proportions, weather-day flags). *Load*
-  resolves business keys to dimension surrogate keys and inserts the fact table.
+  loads each raw source into its own staging table unmodified. *Transform* applies cleansing
+  (empty strings → `NULL`, OpenFlights' `\N` markers) and type casting, and derives the
+  conformed join keys (`DateKey`, `ScheduledDepTimeKey`, weather date keys). See Task 5 for the
+  full list. *Load* resolves business keys to dimension surrogate keys and inserts the fact
+  table.
 - **Storage Layer.** The `stg` schema holds raw and cleansed staging tables (a temporary working
   area, truncated and reloaded on each run). The `dw` schema holds the permanent star schema
-  (dimensions + fact). A downstream **Operations Data Mart** (Task 6) will hold a filtered/
-  aggregated subset for a specific user group.
-- **Presentation Layer.** Tableau connects directly to the `dw`/data mart schema for OLAP-style
+  (dimensions + fact). A downstream **Operations & Delay Performance Data Mart** (Task 6, `mart`
+  schema) holds a pre-aggregated subset for airline operations managers.
+- **Presentation Layer.** Power BI Desktop connects to flattened views over the `dw` and `mart`
+  schemas (`sql/05_presentation/`) for OLAP-style
   slicing (drill-down/roll-up across date, carrier, airport), rendering the dashboards required by
   Task 7 and the business insights required by Task 8.
 
@@ -608,8 +622,9 @@ dashboard query having to re-run a `GROUP BY` over the full 200,000-row fact tab
 
 #### Target users
 
-**Airline and airport operations managers** — the people responsible for day-to-day schedule
-reliability and weather-contingency planning at a given carrier or hub airport. They need to
+**Airline operations managers and the airline's station/hub operations teams** (the Task 1
+stakeholders) — the people responsible for day-to-day schedule reliability and
+weather-contingency planning across the airline's network and at each hub it operates from. They need to
 quickly see, for example, "which days/airports/carriers had poor on-time performance, and was
 weather a factor?" rather than analysing individual flight records. This is distinct from, say, a
 finance team (who would want a cost/revenue-oriented mart) or a customer-experience team (who
@@ -629,6 +644,8 @@ operational delay/weather question this project focuses on.
   per airport-day alongside delay KPIs, patterns like "Delta's Atlanta flights on 2008-10-24
   averaged 26.1mm of rain and only a 17.78% on-time rate" are visible directly from a single mart
   row — no join back to the EDW's flight-level weather columns required for this level of analysis.
+  (This makes the weather/delay *relationship* visible; it does not by itself establish that the
+  weather caused the delay — see Task 1, Limitations.)
 - **Still traceable to detail.** Because the mart reuses the EDW's exact dimension keys rather than
   its own copies, an analyst who spots something interesting in the mart can join back to
   `dw.FactFlightDeparture` on those same keys to drill into individual flights — the mart doesn't
@@ -638,9 +655,8 @@ operational delay/weather question this project focuses on.
 
 ## Task 7: OLAP Analysis and Business Intelligence Dashboard Development (15 Marks)
 
-**Tool: Power BI Desktop**, running on a Windows VM (Power BI Desktop is Windows-only; the
-warehouse itself runs in Docker on the host Mac, reached over the local network — see connection
-notes at the end of this section). Connects live to `DWBI_FlightDelay` via the two presentation
+**Tool: Power BI Desktop** (Windows-only; see the connection notes at the end of this section).
+Connects live to `DWBI_FlightDelay` via the two presentation
 views built in `sql/05_presentation/01_create_views.sql`: `dw.vw_FlightDetail` (flight grain, for
 drill-down) and `mart.vw_DailyCarrierAirportPerformance` (pre-aggregated, for KPIs/trends).
 
@@ -752,10 +768,17 @@ charts — this is where cross-filtering, drill-through and scenario comparison 
 
 ### Connecting Power BI to the warehouse
 
-The warehouse runs in a Docker container (`dwbi-sqlserver`, Azure SQL Edge) on the development
-Mac; Power BI Desktop runs on a separate Windows VM and connects over the local network — **Get
-Data → SQL Server**, server `<Mac's LAN IP>,1433` (or `<Mac's mDNS hostname>.local,1433`, which
-survives network changes), SQL Server authentication (`sa` / see `run_pipeline.sh`). Note: SQL
+Either way, the connection is made through **Get Data → SQL Server**, database `DWBI_FlightDelay`:
+
+- **Windows (current setup):** the warehouse is built on a locally installed SQL Server by
+  `run_pipeline.ps1`, and Power BI Desktop runs on the same machine. Use server `localhost` with
+  Windows authentication.
+- **Mac (original setup):** the warehouse runs in a Docker container (`dwbi-sqlserver`), and
+  Power BI Desktop runs on a separate Windows VM, connecting over the local network. Use server
+  `<Mac's LAN IP>,1433` (or `<Mac's mDNS hostname>.local,1433`, which survives network changes)
+  with SQL Server authentication (`sa` / see `run_pipeline.sh`).
+
+Note: SQL
 Server prefixes the schema name to each view when Power BI loads it, so `dw.vw_FlightDetail`
 appears in the Fields pane as **`dw vw_FlightDetail`** and `mart.vw_DailyCarrierAirportPerformance`
 as **`mart vw_DailyCarrierAirportPerformance`** (space, not dot) — all DAX above uses the correct
@@ -767,23 +790,38 @@ loaded names.
 
 Six insights, each derived directly from queries against the warehouse (`dw.FactFlightDeparture`)
 and reproducible on the Trend Analysis / Interactive Analysis dashboard pages built in Task 7.
+Each one answers one of the Task 1 business questions and feeds one of the decisions in the
+Task 1 problem/decision table.
 
-### 1. Late-arriving aircraft, not weather, is the single biggest driver of delay
+> **Scope of these findings:** every figure below comes from the 200,000-flight stratified sample
+> of **2008** US domestic flights. They describe historical patterns *within that sample*: they are
+> not a claim about current airline performance or about the full 1.94M-flight population.
+> Comparisons between groups (rainy vs. dry days, months, carriers, airports) show
+> **associations**. Other factors are not held constant, so they do not prove what caused the
+> delay (see Task 1, Limitations). Sample-wide baseline: **42.5 min** average arrival delay,
+> **36.7%** on-time.
 
-Across all 200,000 flights, total delay minutes break down as: **Late Aircraft 40.1%**, Carrier
-30.2%, National Air System (NAS) 23.8%, Weather 5.9%, Security 0.1%. The largest cause is a
+### 1. Late-arriving aircraft, not weather, is the single biggest recorded cause of delay
+
+Across all 200,000 flights in the sample, total delay minutes break down by BTS-reported cause as:
+**Late Aircraft 40.1%**, Carrier 30.1%, National Air System (NAS) 23.8%, Weather 5.9%, Security
+0.1%. Unlike the other insights, this one uses the airlines' own cause attribution rather than a
+comparison between groups. The largest cause is a
 *cascading* one — a late-arriving aircraft delays its next scheduled departure — not an external
 factor like weather.
 
 **Recommendation:** invest in schedule buffer time and aircraft-rotation resilience (e.g. shorter
 turnaround chains, spare aircraft at high-traffic hubs) rather than assuming weather mitigation
-alone will fix on-time performance — the data shows weather is a comparatively small direct cause.
+alone will fix on-time performance: weather is a comparatively small *recorded* direct cause
+(though see Insight 2).
 
 ### 2. Poor weather is associated with materially worse performance than the official 5.9% delay-cause share suggests
 
-Comparing flights by same-day origin precipitation: on **rainy/snow days**, average arrival delay
-is **50.2 minutes** vs **35.2 minutes on dry days** (a 43% increase), on-time rate drops from
-**42.1% to 30.9%**, and the cancellation rate more than doubles (0.016% → 0.041%). Weather is only
+Comparing flights by same-day origin precipitation (96,870 flights on rain/snow days vs 103,130 on
+dry days): on **rainy/snow days**, average arrival delay is **50.2 minutes** vs **35.2 minutes on
+dry days** (a 43% increase), and on-time rate drops from **42.1% to 30.9%**. (Cancellations also
+rise, from 17 to 40 flights, but those counts are too small to support a firm conclusion; see
+Task 1, Limitations.) Weather is only
 officially coded as the delay *cause* 5.9% of the time — this comparison shows a clear
 *relationship* between poor weather and worse outcomes, though the official cause breakdown
 suggests part of that relationship is likely mediated through knock-on Late Aircraft and NAS
@@ -799,8 +837,11 @@ understates the business case for weather mitigation investment.
 
 Among carriers with over 1,000 flights in the sample, **JetBlue Airways** (55.9 min avg arrival
 delay, 30.5% on-time), **Mesa Airlines** (54.9 min, 26.1% on-time) and **Comair** (52.3 min, 26.5%
-on-time) perform far worse than the fleet average, while low-volume carriers like Southwest and
-Alaska Airlines (see Task 4/5 validation figures) run well ahead of them.
+on-time) perform far worse than the sample average (42.5 min, 36.7% on-time). At the other end,
+**Southwest Airlines**, the largest carrier in the sample (38,543 flights), averages 30.1 min and
+47.4% on-time, and **Frontier Airlines** 27.5 min and 46.4% on-time. Southwest's result shows that
+high volume and good punctuality can go together. Route mix and hub exposure differ between
+carriers, so this ranking identifies where to look, not the reason for the gap.
 
 **Recommendation:** carriers at the bottom of this ranking warrant an internal scheduling audit —
 whether their published block times are unrealistic, or their aircraft utilization leaves too
@@ -809,19 +850,23 @@ little slack — since this is a controllable factor, unlike weather or airspace
 ### 4. Evening flights are the most delayed time-of-day band
 
 Average arrival delay by scheduled departure time-of-day: **Evening 46.3 min**, Afternoon 42.5
-min, Morning 38.0 min, **Night 37.3 min** (lowest). Delay visibly compounds through the day as
-aircraft rotation delays accumulate — directly consistent with Insight 1.
+min, Morning 38.0 min, **Night 37.3 min** (lowest, but only 4,096 flights, so less reliable than
+the other bands). Delay rises steadily from morning to evening. That pattern is consistent with
+aircraft-rotation delays accumulating through the day (Insight 1), although this comparison
+alone does not prove that mechanism.
 
 **Recommendation:** morning departures should be prioritized/protected in scheduling where
 possible, since a delayed early flight has the whole day to cascade; evening schedules should
 carry extra buffer time by design, not be padded reactively.
 
-### 5. December is the worst month for delays; September/October are the best
+### 5. December is the worst month for delays; September/October are the best in the sample
 
 Average arrival delay by month: **December 50.2 min** (worst), July 46.7 min, June 46.3 min,
-February 46.0 min, vs **October 31.2 min** and **September 34.9 min** (best). This lines up with
-holiday travel volume and winter weather in December, and the post-summer/pre-holiday lull in
-September–October.
+February 46.0 min, vs **October 31.2 min** and **September 34.9 min** (best). This pattern is
+consistent with holiday travel demand and winter weather in December, and with the
+post-summer/pre-holiday lull in September–October. The warehouse has no passenger-volume data,
+though, so those explanations are plausible rather than demonstrated. It is also a single year
+(2008), so the pattern should be checked against other years before it shapes a long-term plan.
 
 **Recommendation:** capacity planning (ground crew staffing, de-icing resources, gate allocation)
 should be weighted toward December and mid-summer, and airlines should consider more conservative
@@ -831,22 +876,35 @@ schedules are already unrealistic for that month's actual operating conditions.
 ### 6. Chicago O'Hare underperforms its peer hubs despite comparable congestion delay
 
 Among the 8 busiest origin airports, **Chicago O'Hare (ORD)** has the worst on-time rate
-(**28.5%**) despite an average NAS (air-system congestion) delay of 13.1 minutes — similar to
-Atlanta (12.9 min, 35.4% on-time) and Dallas-Fort Worth (11.3 min, 36.6% on-time). Phoenix and Las
-Vegas, by contrast, combine low NAS delay (8.6–8.8 min) with the best on-time rates (44.9–45.8%)
-of the group.
+(**28.5%**) despite an average NAS (air-system congestion) delay of 13.1 minutes. That is similar
+to Atlanta (12.9 min, 35.4% on-time) and Dallas-Fort Worth (11.3 min, 36.6% on-time), and *lower*
+than Houston Intercontinental (14.9 min), which still reaches 42.5% on-time. Phoenix and Las Vegas,
+by contrast, combine low NAS delay (8.6–8.8 min) with the best on-time rates (44.9–45.8%) of the
+group. (NAS figures are averaged over delayed flights, i.e. those arriving 15+ minutes late,
+where BTS records a cause breakdown.)
 
-**Recommendation:** ORD's underperformance relative to airports with similar congestion levels
-points to airport-specific operational factors (gate/taxiway layout, ground handling capacity)
-rather than airspace congestion alone — worth a dedicated operational review rather than treating
-it as "just a busy hub."
+**Recommendation:** congestion alone doesn't explain ORD's gap with airports that have similar
+NAS delay. Something specific to ORD, which this data cannot identify, is associated with its
+poorer performance. Candidates worth investigating include gate/taxiway layout, ground-handling
+capacity and the airline's own schedule density there. The finding justifies a dedicated
+operational review rather than treating ORD as "just a busy hub".
 
 ### How these insights support business decision-making
 
-Each insight ties a specific, quantified pattern to an actionable lever an airline or airport
-operator actually controls: schedule buffer design (1, 4), weather-contingency budget sizing (2),
-which carriers need operational audits (3), seasonal staffing/capacity planning (5), and where to
-target airport-specific process improvement (6). None of these conclusions could be reached from
+Each insight ties a specific, quantified pattern to a lever that airline operations management
+actually controls. Together they cover every row of the Task 1 problem/decision table:
+
+| Decision (Task 1) | Stakeholder | Evidence |
+|---|---|---|
+| Schedule buffer / rotation design | Flight Scheduling Teams | Insights 1, 4 |
+| Weather-contingency plan sizing | Airline Operations Managers | Insight 2 |
+| Which carrier operations to audit | Management/Executives, Network Planning | Insight 3 |
+| Seasonal staffing and capacity planning | Airline Operations Managers, Station/Hub Operations | Insight 5 |
+| Hub-specific operational review | Station/Hub Operations, Network Planning | Insight 6 |
+
+These findings are a starting point for decisions, not proof of causes. Each recommendation
+points to where to investigate or plan, and each should be checked against current data before it
+is acted on (see the scope note at the top of this task). None of these conclusions could be reached from
 the raw OLTP-style flight log alone — they all require the multi-dimensional slicing (by cause,
 by carrier, by time-of-day, by month, by airport) that the star schema and dashboard were built to
 provide.

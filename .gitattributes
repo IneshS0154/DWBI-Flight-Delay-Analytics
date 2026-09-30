@@ -1,0 +1,5 @@
+# Keep shell scripts and raw source data byte-identical across Mac/Windows
+*.sh   text eol=lf
+*.csv  -text
+*.dat  -text
+*.json -text

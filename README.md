@@ -76,6 +76,25 @@ _archive_ride_hailing/         An earlier iteration of this project (ride-hailin
 
 ## Running the pipeline
 
+### Windows (local SQL Server, no Docker)
+
+Requires SQL Server (Developer/Express, default instance) and `sqlcmd`. Uses Windows
+authentication. The script copies the three source files to `C:\DWBI_data\`, because the
+SQL Server service account cannot read files under your user profile.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\run_pipeline.ps1
+# named instance / different data folder:
+.\run_pipeline.ps1 -Server "localhost\SQLEXPRESS" -DataDir "D:\DWBI_data\"
+```
+
+`.gitattributes` keeps the source data byte-identical on checkout. If you cloned before it
+existed, Git may have added CRLF line endings to the CSV, which silently empties the last
+column (`LateAircraftDelay`). Delete the data files and re-checkout them to fix it:
+`Remove-Item data\raw\*.csv, data\sources\airports.dat; git checkout -- data`.
+
+### macOS / Linux (Docker)
+
 Requires Docker.
 
 ```bash
@@ -95,9 +114,9 @@ for what each check verifies).
 
 ## Connecting a BI tool
 
-Power BI Desktop (Windows) or any SQL Server client can connect to `localhost,1433` (or the host
-machine's LAN IP/hostname, if connecting from a separate VM), database `DWBI_FlightDelay`, SQL
-authentication. Point the tool at the views in `dw.vw_FlightDetail` and
+Power BI Desktop (Windows) or any SQL Server client can connect to database `DWBI_FlightDelay`
+on `localhost` with Windows authentication (local SQL Server), or on `localhost,1433` with SQL
+authentication (Docker; use the host machine's LAN IP/hostname if connecting from a separate VM). Point the tool at the views in `dw.vw_FlightDetail` and
 `mart.vw_DailyCarrierAirportPerformance` rather than the raw star schema tables — they're
 pre-joined and human-readable. Full dashboard build spec (measures, visuals, pages):
 [Submission.md, Task 7](Submission.md#task-7-olap-analysis-and-business-intelligence-dashboard-development-15-marks).

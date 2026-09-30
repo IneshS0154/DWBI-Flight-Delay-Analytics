@@ -10,6 +10,11 @@ BEGIN
 END
 GO
 
+-- Rebuilt from source on every run, so point-in-time log backups add nothing;
+-- SIMPLE keeps the transaction log small during the bulk loads.
+ALTER DATABASE DWBI_FlightDelay SET RECOVERY SIMPLE;
+GO
+
 USE DWBI_FlightDelay;
 GO
 

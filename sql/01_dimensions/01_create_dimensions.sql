@@ -10,7 +10,8 @@ IF SCHEMA_ID('dw') IS NULL
     EXEC('CREATE SCHEMA dw');
 GO
 
--- Fact references every dimension, so it must be dropped first on re-runs
+-- Both fact tables reference the dimensions, so they must be dropped first on re-runs
+IF OBJECT_ID('mart.FactDailyCarrierAirportPerformance', 'U') IS NOT NULL DROP TABLE mart.FactDailyCarrierAirportPerformance;
 IF OBJECT_ID('dw.FactFlightDeparture', 'U') IS NOT NULL DROP TABLE dw.FactFlightDeparture;
 GO
 

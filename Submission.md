@@ -663,6 +663,23 @@ drill-down) and `mart.vw_DailyCarrierAirportPerformance` (pre-aggregated, for KP
 The dashboard goes beyond the brief's 3-page minimum with a 4th "Deep Dive" page, added
 specifically to make the tool genuinely explorable rather than a fixed set of static charts.
 
+### Model preparation (Power Query / Model view)
+
+- **Shared carrier table.** The two views are independent, flat tables with no relationship
+  between them, so a carrier slicer or drill-through built on one would not filter the other.
+  A small calculated table acts as a conformed carrier dimension for the report:
+
+  ```dax
+  Carriers = DISTINCT('dw vw_FlightDetail'[CarrierName])
+  ```
+
+  `Carriers[CarrierName]` is related one-to-many to `CarrierName` in both views, and every carrier
+  slicer and the drill-through filter use `Carriers[CarrierName]`.
+- **Month sort order.** `MonthName` is set to *Sort by column → `MonthNumber`* in both views so
+  months appear in calendar order rather than alphabetically.
+- **Map coordinates.** `OriginLatitude` / `OriginLongitude` are given the *Latitude* /
+  *Longitude* data categories and set to *Don't summarize*.
+
 ### Base measures (DAX, defined on `mart vw_DailyCarrierAirportPerformance`)
 
 ```dax
@@ -698,6 +715,10 @@ Avg Late Aircraft Delay = DIVIDE(
     SUMX('mart vw_DailyCarrierAirportPerformance', [AvgLateAircraftDelayMinutes] * [FlightCount]),
     SUM('mart vw_DailyCarrierAirportPerformance'[FlightCount]))
 
+Avg Security Delay = DIVIDE(
+    SUMX('mart vw_DailyCarrierAirportPerformance', [AvgSecurityDelayMinutes] * [FlightCount]),
+    SUM('mart vw_DailyCarrierAirportPerformance'[FlightCount]))
+
 Cancellation Rate % = DIVIDE([Total Cancelled], [Total Flights]) * 100
 Diversion Rate % = DIVIDE([Total Diverted], [Total Flights]) * 100
 ```
@@ -727,8 +748,10 @@ split (Insight 1) a permanent home on the summary page rather than requiring a d
 
 1. **Line chart** — X: `FullDate`, Y: `AvgArrDelayMinutes` (Average), Legend: `CarrierName`
 2. **Line chart** — X: `FullDate`, Y: `OnTimeRatePct` (Average)
-3. **Clustered bar chart** — the five delay-cause measures side by side
-4. **Bar chart** — X: `TimeOfDayBand` (from `dw vw_FlightDetail`), Y: `ArrDelayMinutes` (Average) — evidence for Insight 4
+3. **Clustered bar chart** — the five delay-cause measures side by side (`Avg Carrier Delay`,
+   `Avg Weather Delay`, `Avg NAS Delay`, `Avg Security Delay`, `Avg Late Aircraft Delay`)
+4. **Bar chart** — X: `ScheduledDepartureTimeOfDay` (from `dw vw_FlightDetail`; this is
+   `DimTime.TimeOfDayBand`, renamed in the view), Y: `ArrDelayMinutes` (Average) — evidence for Insight 4
 5. **Bar chart** — X: `MonthName` (sorted by `MonthNumber`), Y: `AvgArrDelayMinutes` (Average) — evidence for Insight 5
 
 ### Report Page 3: Interactive Analysis
@@ -738,8 +761,13 @@ Source: `dw vw_FlightDetail` (flight grain, so drill-down has somewhere to go).
 
 1. **Date hierarchy**: `Year` → `Quarter` → `MonthName` → `FullDate`, built via right-click → Create hierarchy
 2. **Clustered column chart** — X: the date hierarchy, Y: `ArrDelayMinutes` (Average); the visual's native ∧/⌄ controls provide drill-down and roll-up
-3. **Map visual** — Location: `OriginCity`, Size/Color: `ArrDelayMinutes` (Average) — geographic view of Insight 6
-4. **3 Slicers** — `CarrierName`, `OriginCity`, `MonthName`
+3. **Map visual** — Latitude: `OriginLatitude`, Longitude: `OriginLongitude` (both "Don't
+   summarize"), Tooltips: `OriginCity`, Size: `ArrDelayMinutes` (Average) — geographic view of
+   Insight 6. The map is plotted from the airport coordinates carried through from OpenFlights
+   rather than from city names, because several US airport cities share a name with a European
+   city (Birmingham, Bristol, Florence, Syracuse, Toledo, …) and name-based geocoding places them
+   on the wrong continent.
+4. **3 Slicers** — `Carriers[CarrierName]`, `OriginCity` (dropdown style, ~300 values), `MonthName`
 
 ### Report Page 4: Deep Dive Analysis (beyond the brief's minimum)
 
@@ -758,13 +786,26 @@ charts — this is where cross-filtering, drill-through and scenario comparison 
    Details: `FullDate` — one point per day; visualises the weather/delay relationship behind
    Insight 2 as a trend rather than two summary numbers.
 4. **Drill-through page** ("Carrier Detail") — a separate page with drill-through enabled on
-   `CarrierName`, containing a flight-level table from `dw vw_FlightDetail`. Right-clicking any
-   carrier anywhere in the report jumps to every individual flight for that carrier.
-5. **Bookmark toggle** — a `DayType` calculated column (`Rain/Snow Day` vs `Dry Day`, based on
-   `OriginPrecipitationMm > 0`) drives two bookmarked states ("Rainy Days" / "Dry Days") wired to
-   button visuals, so a viewer can click between the two and watch every KPI and chart on the page
-   update live — turning Insight 2 into something the viewer discovers interactively rather than
-   being told as a static figure.
+   `Carriers[CarrierName]`, containing a flight-level table from `dw vw_FlightDetail` (`FullDate`,
+   `FlightNum`, `OriginIATA`, `DestIATA`, `DepDelayMinutes`, `ArrDelayMinutes`,
+   `CancellationReason`). Because `Carriers` is related to both views, right-clicking any carrier
+   anywhere in the report — including the mart-based heatmap — jumps to every individual flight
+   for that carrier.
+5. **Bookmark toggle** — a `DayType` calculated column on the mart view drives two bookmarked
+   states ("Rainy Days" / "Dry Days") of a `DayType` slicer, wired to button visuals, so a viewer
+   can click between the two and watch every KPI and chart on the page update live — turning
+   Insight 2 into something the viewer discovers interactively rather than being told as a static
+   figure.
+
+   ```dax
+   DayType = IF('mart vw_DailyCarrierAirportPerformance'[AvgOriginPrecipitationMm] > 0,
+                "Rain/Snow Day", "Dry Day")
+   ```
+
+   The column sits on the mart view (rather than on `OriginPrecipitationMm` in the flight view) so
+   it filters the mart-based visuals on this page. It is equivalent to the flight-level rule: each
+   mart row is one origin airport on one day, so every flight in it shares the same origin
+   weather and the average equals the daily value.
 
 ### Connecting Power BI to the warehouse
 
@@ -773,6 +814,9 @@ Either way, the connection is made through **Get Data → SQL Server**, database
 - **Windows (current setup):** the warehouse is built on a locally installed SQL Server by
   `run_pipeline.ps1`, and Power BI Desktop runs on the same machine. Use server `localhost` with
   Windows authentication.
+- **Windows with Docker:** the warehouse runs in a SQL Server 2022 container (`dwbi-sqlserver`)
+  built by `run_pipeline.ps1 -Docker`, published on host port 14330 to avoid clashing with a local
+  SQL Server on 1433. Use server `localhost,14330` with SQL Server authentication (`sa`).
 - **Mac (original setup):** the warehouse runs in a Docker container (`dwbi-sqlserver`), and
   Power BI Desktop runs on a separate Windows VM, connecting over the local network. Use server
   `<Mac's LAN IP>,1433` (or `<Mac's mDNS hostname>.local,1433`, which survives network changes)

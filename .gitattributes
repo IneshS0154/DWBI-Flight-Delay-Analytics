@@ -3,3 +3,4 @@
 *.csv  -text
 *.dat  -text
 *.json -text
+*.pbix binary

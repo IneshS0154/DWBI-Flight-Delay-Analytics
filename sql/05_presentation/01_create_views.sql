@@ -19,6 +19,7 @@ SELECT
     t.HourNumber AS ScheduledDepartureHour,
     c.CarrierCode, c.CarrierName,
     oa.IATA AS OriginIATA, oa.AirportName AS OriginAirportName, oa.City AS OriginCity, oa.Country AS OriginCountry,
+    oa.Latitude AS OriginLatitude, oa.Longitude AS OriginLongitude,   -- exact coordinates for map visuals
     da.IATA AS DestIATA, da.AirportName AS DestAirportName, da.City AS DestCity, da.Country AS DestCountry,
     cr.CancellationCode, cr.Description AS CancellationReason,
     f.ScheduledElapsedMinutes, f.ActualElapsedMinutes, f.AirTimeMinutes,
@@ -45,6 +46,7 @@ SELECT
     d.FullDate, d.DayName, d.MonthName, d.MonthNumber, d.Quarter, d.Year, d.IsWeekend,
     c.CarrierCode, c.CarrierName,
     a.IATA AS OriginIATA, a.AirportName AS OriginAirportName, a.City AS OriginCity, a.Country AS OriginCountry,
+    a.Latitude AS OriginLatitude, a.Longitude AS OriginLongitude,
     m.FlightCount, m.CancelledCount, m.DivertedCount, m.OnTimeRatePct,
     m.AvgDepDelayMinutes, m.AvgArrDelayMinutes,
     m.AvgCarrierDelayMinutes, m.AvgWeatherDelayMinutes, m.AvgNASDelayMinutes,

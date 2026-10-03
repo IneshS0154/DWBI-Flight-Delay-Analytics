@@ -93,6 +93,21 @@ existed, Git may have added CRLF line endings to the CSV, which silently empties
 column (`LateAircraftDelay`). Delete the data files and re-checkout them to fix it:
 `Remove-Item data\raw\*.csv, data\sources\airports.dat; git checkout -- data`.
 
+### Windows (Docker)
+
+Requires Docker Desktop and `sqlcmd`. The container is published on host port `14330` so it
+doesn't clash with a local SQL Server already using 1433.
+
+```powershell
+docker run -e "ACCEPT_EULA=Y" -e "MSSQL_SA_PASSWORD=<your-password>" `
+  -p 14330:1433 --name dwbi-sqlserver -v dwbi_sql_data:/var/opt/mssql `
+  -d mcr.microsoft.com/mssql/server:2022-latest
+$env:MSSQL_SA_PASSWORD = "<your-password>"
+powershell -ExecutionPolicy Bypass -File .\run_pipeline.ps1 -Docker
+```
+
+Power BI then connects to server `localhost,14330` with SQL Server authentication (`sa`).
+
 ### macOS / Linux (Docker)
 
 Requires Docker.
@@ -113,6 +128,10 @@ checks should report `PASS` (see [Submission.md, Task 5](Submission.md#task-5-et
 for what each check verifies).
 
 ## Connecting a BI tool
+
+The finished Power BI report is [dashboard/dashboards.pbix](dashboard/dashboards.pbix). Open it
+in Power BI Desktop and use **Home → Refresh** (or **Transform data → Data source settings** to
+point it at a different server).
 
 Power BI Desktop (Windows) or any SQL Server client can connect to database `DWBI_FlightDelay`
 on `localhost` with Windows authentication (local SQL Server), or on `localhost,1433` with SQL

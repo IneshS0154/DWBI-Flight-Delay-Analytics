@@ -69,9 +69,9 @@ sql/
 data/
   raw/                         Sampled flight delay CSV
   sources/                     Airport reference, weather JSON, fetch scripts
-run_pipeline.sh                Rebuilds the entire warehouse from scratch
-_archive_ride_hailing/         An earlier iteration of this project (ride-hailing dataset),
-                               preserved for history — not part of the current submission
+dashboard/                     Final Power BI report (Dashboard-Final.pbix)
+run_pipeline.sh                Rebuilds the entire warehouse from scratch (Mac/Linux, Docker)
+run_pipeline.ps1               Rebuilds the entire warehouse from scratch (Windows)
 ```
 
 ## Running the pipeline

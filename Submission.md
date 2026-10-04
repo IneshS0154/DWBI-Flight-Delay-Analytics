@@ -10,8 +10,7 @@ airline operations management function (US domestic flights, 2008)
 > completed are marked **`[TODO]`**.
 >
 > **Note on project history:** this assignment originally used a ride-hailing (Uber-style)
-> dataset. That work is preserved, not deleted, in `_archive_ride_hailing/`. The project was
-> switched to flight delay data because the ride-hailing dataset only supported one genuinely
+> dataset. The project was switched to flight delay data because the ride-hailing dataset only supported one genuinely
 > independent real source (the booking transactions) — its other "sources" would have had to be
 > reference data authored by the student. Flight data joins cleanly to multiple genuinely
 > independent, real, third-party datasets on exact keys (IATA airport code, calendar date), which

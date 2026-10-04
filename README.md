@@ -129,7 +129,7 @@ for what each check verifies).
 
 ## Connecting a BI tool
 
-The finished Power BI report is [dashboard/dashboards.pbix](dashboard/dashboards.pbix). Open it
+The finished Power BI report is [dashboard/Dasboard-Final.pbix](dashboard/Dasboard-Final.pbix). Open it
 in Power BI Desktop and use **Home → Refresh** (or **Transform data → Data source settings** to
 point it at a different server).
 

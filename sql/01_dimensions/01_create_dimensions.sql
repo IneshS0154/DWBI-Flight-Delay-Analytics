@@ -1,8 +1,3 @@
-/* ============================================================
-   Dimension tables — DWBI_FlightDelay data warehouse
-   Star schema. DimAirport is role-played as Origin and Destination.
-   ============================================================ */
-
 USE DWBI_FlightDelay;
 GO
 

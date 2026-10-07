@@ -1,6 +1,6 @@
-/* ============================================================
-   VALIDATION: every check should return Result = 'PASS'.
-   ============================================================ */
+/* 
+Result = 'PASS'.
+*/
 USE DWBI_FlightDelay;
 GO
 

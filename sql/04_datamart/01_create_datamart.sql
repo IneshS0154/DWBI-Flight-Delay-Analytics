@@ -1,11 +1,3 @@
-/* ============================================================
-   Operations & Delay Performance Data Mart
-   A dependent data mart: sourced entirely from the EDW (dw schema),
-   reusing the same conformed dimension keys (DateKey, CarrierKey,
-   OriginAirportKey) rather than duplicating dimension data.
-
-   Grain: one row per (Date, Carrier, Origin Airport) combination.
-   ============================================================ */
 USE DWBI_FlightDelay;
 GO
 

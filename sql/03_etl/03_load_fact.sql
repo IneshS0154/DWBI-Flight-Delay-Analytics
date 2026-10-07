@@ -1,8 +1,3 @@
-/* ============================================================
-   LOAD fact table: resolve business values to dimension surrogate
-   keys, and bring in same-day weather at both origin and
-   destination airports (Task 2 source 3, joined on IATA + date).
-   ============================================================ */
 USE DWBI_FlightDelay;
 GO
 

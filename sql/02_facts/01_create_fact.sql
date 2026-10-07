@@ -1,9 +1,3 @@
-/* ============================================================
-   FactFlightDeparture
-   Business process : Flight departure (a scheduled US domestic flight)
-   Grain             : one row per flight record in the source sample
-   ============================================================ */
-
 USE DWBI_FlightDelay;
 GO
 

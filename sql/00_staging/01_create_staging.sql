@@ -1,9 +1,3 @@
-/* ============================================================
-   Staging tables for the Flight Delay project.
-   One staging table per source, mirroring each source's native
-   shape. No cleansing here — that happens in sql/03_etl/.
-   ============================================================ */
-
 IF DB_ID('DWBI_FlightDelay') IS NULL
 BEGIN
     CREATE DATABASE DWBI_FlightDelay;

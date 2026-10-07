@@ -1,6 +1,3 @@
-/* ============================================================
-   LOAD the data mart by aggregating the EDW fact table.
-   ============================================================ */
 USE DWBI_FlightDelay;
 GO
 

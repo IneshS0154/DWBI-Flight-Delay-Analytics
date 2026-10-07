@@ -1,8 +1,3 @@
-/* ============================================================
-   EXTRACT: load all three raw sources into staging, unmodified.
-   Files are copied to $(DataDir) (a folder the SQL Server service
-   can read) by run_pipeline.sh / run_pipeline.ps1 first.
-   ============================================================ */
 USE DWBI_FlightDelay;
 GO
 
